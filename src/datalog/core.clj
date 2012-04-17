@@ -111,14 +111,18 @@
                           (F nil nil environment prev)))
                 (if-let [p (resolve (first (first clauses)))]
                   (if (apply p (map environment (rest (first clauses))))
-                    (F (get-by-attribute db (second (second clauses)))
+                    (F (if (seq? (first (rest clauses)))
+                         (get-by-attribute db nil)
+                         (get-by-attribute db (second (first (rest clauses)))))
                        (rest clauses)
                        environment
                        prev)
-                    (F (rest facts)
-                       clauses
-                       environment
-                       prev))
+                    (when prev
+                      (let [{:keys [facts clauses environment prev]} prev]
+                        (F facts
+                           clauses
+                           environment
+                           prev))))
                   (throw (Exception. "failed rule"))))
               (if (and (not (seq facts))
                        (not prev))
@@ -162,44 +166,7 @@
                        (F (rest facts)
                           clauses
                           environment
-                          prev)))))))
-            (if (seq? (first clauses))
-              (if-let [rules (seq (filter #(= (first (first %))
-                                              (first (first clauses))) rules))]
-                (let [[rule-name & args] (first clauses)]
-                  (concat (apply concat (for [rule rules
-                                              :let [[rule-head & rule-body] rule
-                                                    free-rule-vars (->> (tree-seq coll? seq rule-body)
-                                                                        (filter #(and (symbol? %)
-                                                                                      (.startsWith (name %) "?")))
-                                                                        (remove (set (rest rule-head)))
-                                                                        set
-                                                                        (map (juxt identity
-                                                                                   gensym))
-                                                                        (into {}))
-                                                    rule-env (merge (zipmap (rest rule-head) args)
-                                                                    free-rule-vars)
-                                                    new-clauses (concat (map #(resolve-in % rule-env) rule-body)
-                                                                        (rest clauses))]]
-                                          (F (if (seq? (first new-clauses))
-                                               (get-by-attribute db nil)
-                                               (get-by-attribute db (second (first new-clauses))))
-                                             new-clauses
-                                             environment
-                                             nil)))
-                          (F nil nil environment prev)))
-                (if-let [p (resolve (first (first clauses)))]
-                  (if (apply p (map environment (rest (first clauses))))
-                    (F (get-by-attribute db (second (second clauses)))
-                       (rest clauses)
-                       environment
-                       prev)
-                    (F (rest facts)
-                       clauses
-                       environment
-                       prev))
-                  (throw (Exception. "failed rule"))))
-              ))))
+                          prev))))))))))
        (if (seq? (first query))
          (get-by-attribute db nil)
          (get-by-attribute db (second (first query))))

@@ -114,14 +114,13 @@
            {:a "tom"})))
 
   (is (= (g '[?fname ?f]
-            '[[?person1 :street "Lake City Way NE"]
-              (family ?person1 ?relative)
-              [?person1 :first-name ?f]
+            '[[?person :street "Lake City Way NE"]
+              (family ?person ?relative)
+              [?person :first-name ?f]
               [?relative :first-name ?fname]
-              (not= ?f ?fname)]
+              (not= ?person ?relative)]
             '[[[family ?X ?Y]
                [?X :last-name ?Z]
                [?Y :last-name ?Z]]]
             db)
-         '({:fname "Michael", :f "Kevin"}
-           {:fname "Kevin", :f "Kevin"}))))
+         '({:fname "Michael", :f "Kevin"}))))
