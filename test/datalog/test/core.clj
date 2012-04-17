@@ -1,7 +1,6 @@
 (ns datalog.test.core
   (:use [datalog.core]
-        [clojure.test])
-  (:import (java.util UUID)))
+        [clojure.test]))
 
 (def db
   #{
