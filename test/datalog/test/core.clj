@@ -30,7 +30,7 @@
 
 (deftest t-stuff
 
-  (is (= (set (g '[?p1-first-name ?p1-last-name ?p2-first-name]
+  (is (= (set (q '[?p1-first-name ?p1-last-name ?p2-first-name]
                  '[[?person1 :street "Lake City Way NE"]
                    [?person1 :last-name ?p1-last-name]
                    [?person1 :first-name ?p1-first-name]
@@ -48,7 +48,7 @@
                  :p1-last-name "Abelseth",
                  :p1-first-name "Ariella"}))))
 
-  (is (= (g '[?p2-first-name ?p1-last-name ?p1-name ?place1]
+  (is (= (q '[?p2-first-name ?p1-last-name ?p1-name ?place1]
             '[[?person1 :street "Lake City Way NE"]
               [?person1 :last-name ?p1-last-name]
               [?person2 :last-name ?p1-last-name]
@@ -63,7 +63,7 @@
             :p1-name "Bar"
             :place1 #uuid "5d416576-9c6c-49c3-98ad-70f44b525004"})))
   
-  (is (= (g '[?a]
+  (is (= (q '[?a]
             '[(ancestor "bill" ?a)]
             '[[[ancestor ?X ?Y] [?X :parent ?Y]]
               [[ancestor ?X ?Y] [?X :parent ?Z] (ancestor ?Z ?Y)]]
@@ -73,7 +73,7 @@
            {:a "jack"}
            {:a "george"})))
 
-  (is (= (g '[?ancestor]
+  (is (= (q '[?ancestor]
             '[(sibling "tom" ?ancestor)]
             '[[[sibling ?X ?Y]
                [?X :parent ?Z]
@@ -82,7 +82,7 @@
             db)
          '({:ancestor "john"})))
 
-  (is (= (g '[?fname ?f]
+  (is (= (q '[?fname ?f]
             '[[?person :street "Lake City Way NE"]
               (family ?person ?relative)
               [?person :first-name ?f]

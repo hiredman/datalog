@@ -158,7 +158,7 @@
                         environment
                         prev))))))))))
 
-(defn g [vars query rules db]
+(defn q [vars query rules db]
   (let [vars (set vars)
         given-names (set (filter symbol? (tree-seq coll? seq query)))]
     (if (not (every? (partial contains? given-names) vars))
