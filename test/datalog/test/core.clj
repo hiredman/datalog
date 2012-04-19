@@ -103,23 +103,23 @@
            {:a "jack"}
            {:a "george"})))
 
-  (is (= (g '[?a]
-            '[(sibling "tom" ?a)]
+  (is (= (g '[?ancestor]
+            '[(sibling "tom" ?ancestor)]
             '[[[sibling ?X ?Y]
                [?X :parent ?Z]
-               [?Y :parent ?Z]]]
+               [?Y :parent ?Z]
+               (not= ?X ?Y)]]
             db)
-         '({:a "john"}
-           {:a "tom"})))
+         '({:ancestor "john"})))
 
   (is (= (g '[?fname ?f]
             '[[?person :street "Lake City Way NE"]
               (family ?person ?relative)
               [?person :first-name ?f]
-              [?relative :first-name ?fname]
-              (not= ?person ?relative)]
+              [?relative :first-name ?fname]]
             '[[[family ?X ?Y]
                [?X :last-name ?Z]
-               [?Y :last-name ?Z]]]
+               [?Y :last-name ?Z]
+               (not= ?X ?Y)]]
             db)
          '({:fname "Michael", :f "Kevin"}))))
