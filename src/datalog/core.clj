@@ -1,5 +1,9 @@
 (ns datalog.core)
 
+(defn logic-name? [o]
+  (and (symbol? o)
+       (.startsWith (name o) "?")))
+
 (defmulti match (comp type first list))
 
 (defmethod match :default [a b]
@@ -7,7 +11,7 @@
     {a b}))
 
 (defmethod match clojure.lang.Symbol [a b]
-  (if (.startsWith (name a) "?")
+  (if (logic-name? a)
     {a b}
     (when (= a b)
       {a b})))
@@ -32,32 +36,39 @@
 
 (declare search)
 
+(defn search-with-rules
+  [rule-name args db rules vars facts clauses environment prev]
+  (apply concat (for [rule rules
+                      :let [[rule-head & rule-body] rule
+                            free-rule-vars (->> (tree-seq coll? seq rule-body)
+                                                (filter logic-name?)
+                                                (remove (set (rest rule-head)))
+                                                set
+                                                (map (juxt identity
+                                                           gensym))
+                                                (into {}))
+                            rule-env (merge (zipmap (rest rule-head) args)
+                                            free-rule-vars)
+                            new-clauses (concat (map
+                                                 #(resolve-in % rule-env)
+                                                 rule-body)
+                                                (rest clauses))]]
+                  (search db rules
+                          vars
+                          (if (seq? (first new-clauses))
+                            (get-by-attribute db nil)
+                            (get-by-attribute db (second (first new-clauses))))
+                          new-clauses
+                          environment
+                          nil))))
+
 (defn rule [db rules vars facts clauses environment prev]
   (lazy-seq
    (let [[rule-name & args] (first clauses)]
-     (concat (apply concat (for [rule rules
-                                 :let [[rule-head & rule-body] rule
-                                       free-rule-vars (->> (tree-seq coll? seq rule-body)
-                                                           (filter #(and (symbol? %)
-                                                                         (.startsWith (name %) "?")))
-                                                           (remove (set (rest rule-head)))
-                                                           set
-                                                           (map (juxt identity
-                                                                      gensym))
-                                                           (into {}))
-                                       rule-env (merge (zipmap (rest rule-head) args)
-                                                       free-rule-vars)
-                                       new-clauses (concat (map #(resolve-in % rule-env) rule-body)
-                                                           (rest clauses))]]
-                             (search db rules
-                                     vars
-                                     (if (seq? (first new-clauses))
-                                       (get-by-attribute db nil)
-                                       (get-by-attribute db (second (first new-clauses))))
-                                     new-clauses
-                                     environment
-                                     nil)))
-             (search db rules vars nil nil environment prev)))))
+     (concat
+      (search-with-rules
+        rule-name args db rules vars facts clauses environment prev)
+      (search db rules vars nil nil environment prev)))))
 
 (defn rule-or-predicate [db rules vars facts clauses environment prev]
   (lazy-seq
@@ -83,6 +94,30 @@
                      prev))))
        (throw (Exception. "failed rule"))))))
 
+(defn out-of-facts-or-clauses
+  [db rules vars facts clauses environment prev]
+  (let [e environment
+        {:keys [facts clauses environment prev]} prev]
+    (if (every? #(contains? e %) vars)
+      (lazy-seq
+       (cons (reduce
+              (fn [m [k v]]
+                (assoc m (keyword (subs (name k) 1)) v))
+              {}
+              (select-keys e vars))
+             (search db rules
+                     vars
+                     facts
+                     clauses
+                     environment
+                     prev)))
+      (search db rules
+              vars
+              facts
+              clauses
+              environment
+              prev))))
+
 (defn search [db rules vars facts clauses environment prev]
   (lazy-seq
    (if (and (every? #(contains? environment %) vars)
@@ -95,27 +130,8 @@
          nil
          (if (or (not (seq facts))
                  (not (seq clauses)))
-           (let [e environment
-                 {:keys [facts clauses environment prev]} prev]
-             (if (every? #(contains? e %) vars)
-               (lazy-seq
-                (cons (reduce
-                       (fn [m [k v]]
-                         (assoc m (keyword (subs (name k) 1)) v))
-                       {}
-                       (select-keys e vars))
-                      (search db rules
-                              vars
-                              facts
-                              clauses
-                              environment
-                              prev)))
-               (search db rules
-                       vars
-                       facts
-                       clauses
-                       environment
-                       prev)))
+           (out-of-facts-or-clauses
+            db rules vars facts clauses environment prev)
            (lazy-seq
             (let [clause (resolve-in (first clauses) environment)
                   fact (first facts)
