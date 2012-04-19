@@ -29,36 +29,6 @@
     ["tom" :parent "jack"]})
 
 (deftest t-stuff
-  (is (= (f '[?p2-first-name ?p1-last-name ?p1-name ?place1]
-            '[[?person1 :street "Lake City Way NE"]
-              [?person1 :last-name ?p1-last-name]
-              [?person2 :last-name ?p1-last-name]
-              [?person2 :street "Hanam"]
-              [?person2 :first-name ?p2-first-name]
-              [?place1 :owners-name ?p2-first-name]
-              [?place1 :name ?p1-name]]
-            db)
-         '({:p2-first-name "Michael",
-            :p1-last-name "Downey",
-            :p1-name "Bar"
-            :place1 #uuid "5d416576-9c6c-49c3-98ad-70f44b525004"})))
-
-  (is (= (f '[?p1-first-name ?p1-last-name ?p2-first-name]
-            '[[?person1 :street "Lake City Way NE"]
-              [?person1 :last-name ?p1-last-name]
-              [?person1 :first-name ?p1-first-name]
-              [?person2 :last-name ?p1-last-name]
-              [?person2 :first-name ?p2-first-name]]
-            db)
-         '({:p2-first-name "Michael",
-            :p1-last-name "Downey",
-            :p1-first-name "Kevin"}
-           {:p2-first-name "Kevin",
-            :p1-last-name "Downey",
-            :p1-first-name "Kevin"}
-           {:p2-first-name "Ariella",
-            :p1-last-name "Abelseth",
-            :p1-first-name "Ariella"})))
 
   (is (= (set (g '[?p1-first-name ?p1-last-name ?p2-first-name]
                  '[[?person1 :street "Lake City Way NE"]
