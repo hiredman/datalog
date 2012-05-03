@@ -29,29 +29,29 @@
 
 (defn search-with-rules
   [rule-name args db rules vars facts clauses environment prev]
-  (apply concat (for [rule rules
-                      :let [[rule-head & rule-body] rule
-                            free-rule-vars (->> (tree-seq coll? seq rule-body)
-                                                (filter logic-name?)
-                                                (remove (set (rest rule-head)))
-                                                set
-                                                (map (juxt identity
-                                                           gensym))
-                                                (into {}))
-                            rule-env (merge (zipmap (rest rule-head) args)
-                                            free-rule-vars)
-                            new-clauses (concat (map
-                                                 #(resolve-in % rule-env)
-                                                 rule-body)
-                                                (rest clauses))]]
-                  (search db rules
-                          vars
-                          (if (seq? (first new-clauses))
-                            (get-by-attribute db nil)
-                            (get-by-attribute db (second (first new-clauses))))
-                          new-clauses
-                          environment
-                          nil))))
+  (for [rule rules
+        :let [[rule-head & rule-body] rule
+              free-rule-vars (->> (tree-seq coll? seq rule-body)
+                                  (filter logic-name?)
+                                  (remove (set (rest rule-head)))
+                                  set
+                                  (map (juxt identity gensym))
+                                  (into {}))
+              rule-env (merge (zipmap (rest rule-head) args)
+                              free-rule-vars)
+              new-clauses (concat (map #(resolve-in % rule-env)
+                                       rule-body)
+                                  (rest clauses))]
+        result (search db
+                       rules
+                       vars
+                       (if (seq? (first new-clauses))
+                         (get-by-attribute db nil)
+                         (get-by-attribute db (second (first new-clauses))))
+                       new-clauses
+                       environment
+                       nil)]
+    result))
 
 (defn rule [db rules vars facts clauses environment prev]
   (lazy-seq
