@@ -25,15 +25,6 @@
     (filter #(= attribute (second %)) db)
     db))
 
-(defn process-results [results vars]
-  (for [r results
-        :when (every? #(contains? r %) vars)]
-    (reduce
-     (fn [m [k v]]
-       (assoc m (keyword (subs (name k) 1)) v))
-     {}
-     (select-keys r vars))))
-
 (declare search)
 
 (defn search-with-rules
