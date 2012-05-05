@@ -1,6 +1,7 @@
 (ns datalog.test.core
   (:use [datalog.core]
-        [clojure.test]))
+        [clojure.test])
+  (:require [criterium.core :as c]))
 
 (def db
   #{
@@ -29,7 +30,6 @@
     ["tom" :parent "jack"]})
 
 (deftest t-stuff
-
   (is (= (set (q '[?p1-first-name ?p1-last-name ?p2-first-name]
                  '[[?person1 :street "Lake City Way NE"]
                    [?person1 :last-name ?p1-last-name]
@@ -93,3 +93,9 @@
                (not= ?X ?Y)]]
             db)
          '({:fname "Michael", :f "Kevin"}))))
+
+
+(defn bench []
+  (c/report-result
+   (c/benchmark
+    (t-stuff))))
