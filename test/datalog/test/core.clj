@@ -112,7 +112,6 @@
                                  (io/reader (io/resource "actordb.clj")))]
                    (binding [*in* in]
                      (read)))]
-    (prn (count actor-db))
     (c/report-result
      (c/benchmark
       (doseq [peep peeps]
