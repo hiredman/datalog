@@ -1,7 +1,8 @@
 (ns datalog.test.core
   (:use [datalog.core]
         [clojure.test])
-  (:require [criterium.core :as c]))
+  (:require [criterium.core :as c]
+            [clojure.java.io :as io]))
 
 (def db
   #{
@@ -62,7 +63,7 @@
             :p1-last-name "Downey",
             :p1-name "Bar"
             :place1 #uuid "5d416576-9c6c-49c3-98ad-70f44b525004"})))
-  
+
   (is (= (q '[?a]
             '[(ancestor "bill" ?a)]
             '[[[ancestor ?X ?Y] [?X :parent ?Y]]
@@ -94,8 +95,23 @@
             db)
          '({:fname "Michael", :f "Kevin"}))))
 
+(def peeps
+  '("Akira Kurosawa" "Patrick Swayze" "Barbara Bel Geddes" "Marlene Dietrich" "John Woo" "Mili Avital" "Steven Bauer" "Janeane Garofalo" "Jonathan Pryce" "Charles Chaplin"))
 
 (defn bench []
-  (c/report-result
-   (c/benchmark
-    (t-stuff))))
+  (let [actor-db (with-open [in (java.io.PushbackReader.
+                                 (io/reader (io/resource "actordb.clj")))]
+                   (binding [*in* in]
+                     (read)))]
+    (prn (count actor-db))
+    (c/report-result
+     (c/benchmark
+      (doseq [peep peeps]
+        (doall
+         (q '[?ancestor]
+            `[(~'sibling ~peep ~'?ancestor)]
+            '[[[sibling ?X ?Y]
+               [?X :parent ?Z]
+               [?Y :parent ?Z]
+               (not= ?X ?Y)]]
+            actor-db)))))))
