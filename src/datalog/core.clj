@@ -1,4 +1,5 @@
-(ns datalog.core)
+(ns datalog.core
+  (:require [datalog.fj :as fj]))
 
 (defn logic-name? [o]
   (and (symbol? o)
@@ -163,12 +164,29 @@
            (search-next-clause db rules vars facts clauses environment)
            (search-rest-of-facts db rules vars facts clauses environment)))))))
 
+(defn psearch [db rules vars facts clauses environment]
+  (let [n 4]
+    (if (> (count facts) 1000)
+      (->> facts
+           (partition-all (long (/ (count facts) n)))
+           ((fn [pfacts]
+              (concat
+               (search db rules vars (first pfacts) clauses environment)
+               (doall
+                (map (fn [facts]
+                       (fj/fj
+                        (doall
+                         (search db rules vars facts clauses environment))))
+                     (rest pfacts))))))
+           (mapcat fj/join))
+      (search db rules vars facts clauses environment))))
+
 (defn q [vars query rules db]
   (let [vars (set vars)
         given-names (set (filter symbol? (tree-seq coll? seq query)))]
     (if (not (every? (partial contains? given-names) vars))
       (throw (Exception. "unknown variable"))
-      (search
+      (psearch
        db
        rules
        vars
