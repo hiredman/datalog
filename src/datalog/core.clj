@@ -61,16 +61,21 @@
 
 (declare search)
 
+(defn free-vars [[rule-head & rule-body]]
+  (let [bound-vars (set (rest rule-head))]
+    (persistent! (reduce (fn [m v]
+                           (if (and (logic-name? v)
+                                    (not (contains? bound-vars v)))
+                             (assoc! m v (gensym v))
+                             m))
+                         (transient {})
+                         (tree-seq coll? seq rule-body)))))
+
 (defn search-with-rules
-  [rule-name args db rules vars facts clauses environment prev]
+  [rule-name args db rules vars facts clauses environment]
   (for [rule rules
         :let [[rule-head & rule-body] rule
-              free-rule-vars (->> (tree-seq coll? seq rule-body)
-                                  (filter logic-name?)
-                                  (remove (set (rest rule-head)))
-                                  set
-                                  (map (juxt identity gensym))
-                                  (into {}))
+              free-rule-vars (free-vars rule)
               rule-env (merge (zipmap (rest rule-head) args)
                               free-rule-vars)
               new-clauses (concat (map #(resolve-in % rule-env)
