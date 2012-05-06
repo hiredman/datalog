@@ -4,17 +4,51 @@
   (and (symbol? o)
        (.startsWith (name o) "?")))
 
-(defmulti match (comp type first list))
+(defprotocol MatchP
+  (-match [a b]))
 
-(defmethod match :default [a b]
-  (when (isa? b a)
-    {a b}))
+(extend-protocol MatchP
+  Object
+  (-match [a b]
+    (when (= b a)
+      {a b}))
+  java.lang.Class
+  (-match [a b]
+    (when (isa? b a)
+      {a b}))
+  clojure.lang.Keyword
+  (-match [a b]
+    (when (isa? b a)
+      {a b}))
+  clojure.lang.Symbol
+  (-match [a b]
+    (if (logic-name? a)
+      {a b}
+      (when (= a b)
+        {a b}))))
 
-(defmethod match clojure.lang.Symbol [a b]
-  (if (logic-name? a)
-    {a b}
-    (when (= a b)
-      {a b})))
+;; (mf/defmulti --match (fn [a b] (type a)))
+
+;; (mf/defmethod --match :default [a b]
+;;   (when (= b a)
+;;     {a b}))
+
+;; (mf/defmethod --match java.lang.Class [a b]
+;;   (when (isa? b a)
+;;     {a b}))
+
+;; (mf/defmethod --match clojure.lang.Keyword [a b]
+;;   (when (isa? b a)
+;;     {a b}))
+
+;; (mf/defmethod --match clojure.lang.Symbol [a b]
+;;   (if (logic-name? a)
+;;       {a b}
+;;       (when (= a b)
+;;         {a b})))
+
+(defn match [a b]
+  (-match a b))
 
 (defn resolve-in [clause environment]
   ((if (seq? clause) identity vec)
