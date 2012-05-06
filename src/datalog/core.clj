@@ -176,5 +176,4 @@
          (get-by-attribute db nil)
          (get-by-attribute db (second (first query))))
        query
-       {}
-       nil))))
+       {}))))
