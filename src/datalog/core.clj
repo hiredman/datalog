@@ -88,105 +88,80 @@
                          (get-by-attribute db nil)
                          (get-by-attribute db (second (first new-clauses))))
                        new-clauses
-                       environment
-                       nil)]
+                       environment)]
     result))
 
-(defn rule [db rules vars facts clauses environment prev]
+(defn rule [db rules vars facts clauses environment]
   (lazy-seq
-   (let [[rule-name & args] (first clauses)]
-     (concat
-      (search-with-rules
-        rule-name args db rules vars facts clauses environment prev)
-      (search db rules vars nil nil environment prev)))))
+    (let [[rule-name & args] (first clauses)]
+      (concat
+       (search-with-rules
+         rule-name args db rules vars facts clauses environment)
+       (search db rules vars nil nil environment)))))
 
-(defn rule-or-predicate [db rules vars facts clauses environment prev]
+(defn rule-or-predicate [db rules vars facts clauses environment]
   (lazy-seq
-   (if-let [rules (seq (filter #(= (first (first %))
-                                   (first (first clauses))) rules))]
-     (rule db rules vars facts clauses environment prev)
-     (if-let [p (resolve (first (first clauses)))]
-       (if (apply p (map environment (rest (first clauses))))
-         (search db rules vars
-                 (if (seq? (first (rest clauses)))
-                   (get-by-attribute db nil)
-                   (get-by-attribute db (second (first (rest clauses)))))
-                 (rest clauses)
-                 environment
-                 prev)
-         (when prev
-           (let [{:keys [facts clauses environment prev]} prev]
-             (search db rules
-                     vars
-                     facts
-                     clauses
-                     environment
-                     prev))))
-       (throw (Exception. "failed rule"))))))
+    (if-let [rules (seq (filter #(= (first (first %))
+                                    (first (first clauses))) rules))]
+      (rule db rules vars facts clauses environment)
+      (if-let [p (resolve (first (first clauses)))]
+        (when (apply p (map environment (rest (first clauses))))
+          (search db
+                  rules
+                  vars
+                  (if (seq? (first (rest clauses)))
+                    (get-by-attribute db nil)
+                    (get-by-attribute db (second (first (rest clauses)))))
+                  (rest clauses)
+                  environment))
+        (throw (Exception. "failed rule"))))))
 
 (defn out-of-facts-or-clauses
-  [db rules vars facts clauses environment prev]
-  (let [e environment
-        {:keys [facts clauses environment prev]} prev]
-    (if (every? #(contains? e %) vars)
-      (lazy-seq
-       (cons (reduce
-              (fn [m [k v]]
-                (assoc m (keyword (subs (name k) 1)) v))
-              {}
-              (select-keys e vars))
-             (search db rules
-                     vars
-                     facts
-                     clauses
-                     environment
-                     prev)))
-      (search db rules
-              vars
-              facts
-              clauses
-              environment
-              prev))))
+  [db rules vars facts clauses environment]
+  (when (every? #(contains? environment %) vars)
+    (lazy-seq
+      [(reduce
+        (fn [m [k v]]
+          (assoc m (keyword (subs (name k) 1)) v))
+        {}
+        (select-keys environment vars))])))
 
-(defn search [db rules vars facts clauses environment prev]
+(defn search-next-clause [db rules vars facts clauses environment]
+  (let [clause (resolve-in (first clauses) environment)
+        fact (first facts)
+        m (map match clause fact)
+        pass? (and (seq m)
+                   (every? map? m)
+                   (= (count (set (map keys m)))
+                      (count (set (map vals m)))))]
+    (when pass?
+      (let [new-env (apply merge m)]
+        (search db
+                rules
+                vars
+                (get-by-attribute db (second (second clauses)))
+                (rest clauses)
+                (into environment new-env))))))
+
+(defn search-rest-of-facts [db rules vars facts clauses environment]
+  (search db
+          rules
+          vars
+          (rest facts)
+          clauses
+          environment))
+
+(defn search [db rules vars facts clauses environment]
   (lazy-seq
-   (if (and (every? #(contains? environment %) vars)
-            (not prev))
-     [environment]
-     (if (seq? (first clauses))
-       (rule-or-predicate db rules vars facts clauses environment prev)
-       (if (and (not (seq facts))
-                (not prev))
-         nil
-         (if (or (not (seq facts))
-                 (not (seq clauses)))
-           (out-of-facts-or-clauses
-            db rules vars facts clauses environment prev)
-           (lazy-seq
-            (let [clause (resolve-in (first clauses) environment)
-                  fact (first facts)
-                  m (map match clause fact)
-                  pass? (and (seq m)
-                             (every? map? m)
-                             (= (count (set (map keys m)))
-                                (count (set (map vals m)))))]
-              (if pass?
-                (let [new-env (apply merge m)]
-                  (search db rules
-                          vars
-                          (get-by-attribute db (second (second clauses)))
-                          (rest clauses)
-                          (into environment new-env)
-                          {:facts (rest facts)
-                           :clauses clauses
-                           :environment environment
-                           :prev prev}))
-                (search db rules
-                        vars
-                        (rest facts)
-                        clauses
-                        environment
-                        prev))))))))))
+    (if (seq? (first clauses))
+      (rule-or-predicate db rules vars facts clauses environment)
+      (when (seq facts)
+        (if (or (not (seq facts))
+                (not (seq clauses)))
+          (out-of-facts-or-clauses db rules vars facts clauses environment)
+          (concat
+           (search-next-clause db rules vars facts clauses environment)
+           (search-rest-of-facts db rules vars facts clauses environment)))))))
 
 (defn q [vars query rules db]
   (let [vars (set vars)
