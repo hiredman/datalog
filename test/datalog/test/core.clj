@@ -96,7 +96,16 @@
          '({:fname "Michael", :f "Kevin"}))))
 
 (def peeps
-  '("Akira Kurosawa" "Patrick Swayze" "Barbara Bel Geddes" "Marlene Dietrich" "John Woo" "Mili Avital" "Steven Bauer" "Janeane Garofalo" "Jonathan Pryce" "Charles Chaplin"))
+  '("Akira Kurosawa"
+    "Patrick Swayze"
+    "Barbara Bel Geddes"
+    "Marlene Dietrich"
+    "John Woo"
+    "Mili Avital"
+    "Steven Bauer"
+    "Janeane Garofalo"
+    "Jonathan Pryce"
+    "Charles Chaplin"))
 
 (defn bench []
   (let [actor-db (with-open [in (java.io.PushbackReader.
