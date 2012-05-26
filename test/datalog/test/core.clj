@@ -95,31 +95,180 @@
             db)
          '({:fname "Michael", :f "Kevin"}))))
 
-(def peeps
-  '("Akira Kurosawa"
-    "Patrick Swayze"
-    "Barbara Bel Geddes"
-    "Marlene Dietrich"
-    "John Woo"
-    "Mili Avital"
-    "Steven Bauer"
-    "Janeane Garofalo"
-    "Jonathan Pryce"
-    "Charles Chaplin"))
+;; (def peeps
+;;   '("Akira Kurosawa"
+;;     "Patrick Swayze"
+;;     "Barbara Bel Geddes"
+;;     "Marlene Dietrich"
+;;     "John Woo"
+;;     "Mili Avital"
+;;     "Steven Bauer"
+;;     "Janeane Garofalo"
+;;     "Jonathan Pryce"
+;;     "Charles Chaplin"))
 
-(defn bench []
-  (let [actor-db (with-open [in (java.io.PushbackReader.
-                                 (io/reader (io/resource "actordb.clj")))]
-                   (binding [*in* in]
-                     (read)))]
-    (c/report-result
-     (c/benchmark
-      (doseq [peep peeps]
-        (doall
-         (q '[?ancestor]
-            `[(~'sibling ~peep ~'?ancestor)]
-            '[[[sibling ?X ?Y]
-               [?X :parent ?Z]
-               [?Y :parent ?Z]
-               (not= ?X ?Y)]]
-            actor-db)))))))
+;; (def db (delay
+;;           (let [actor-db (atom #{})]
+;;             (with-open [in (java.io.PushbackReader.
+;;                             (io/reader (io/file "/tmp/db.txt")))]
+;;               (binding [*in* in]
+;;                 (while (try
+;;                          (swap! actor-db conj (read))
+;;                          true
+;;                          (catch Exception e
+;;                            (prn e))))))
+;;             @actor-db)))
+
+;; (defn bench []
+;;   (c/report-result
+;;    (c/benchmark
+;;     (doseq [peep (take 1 peeps)]
+;;       (doall
+;;        (q '[?ancestor]
+;;           `[(~'sibling ~peep ~'?ancestor)]
+;;           '[[[sibling ?X ?Y]
+;;              [?X :parent ?Z]
+;;              [?Y :parent ?Z]
+;;              (not= ?X ?Y)]]
+;;           @db))))))
+
+;; (require '[clojure.core.reducers :as r])
+
+;; (defn rpartition-by
+;;   "Applies f to each value in coll, splitting it each time f returns
+;;    a new value."
+;;   {:added "1.5"}
+;;   [fun coll]
+;;   (reify
+;;     clojure.core.protocols/CollReduce
+;;     (coll-reduce [this f1]
+;;       (clojure.core.protocols/coll-reduce this f1 (f1)))
+;;     (coll-reduce [_ f1 init]
+;;       (let [s (Object.)
+;;             result (r/reduce
+;;                     (fn [accum v]
+;;                       (let [r (fun v)]
+;;                         (if (or (= r (:last accum))
+;;                                 (= s (:last accum)))
+;;                           (-> accum
+;;                               (update-in [:values] conj v)
+;;                               (assoc :last r))
+;;                           (-> accum
+;;                               (update-in [:init] f1 (:values accum))
+;;                               (assoc
+;;                                   :values [v]
+;;                                   :last r)))))
+;;                     {:init init
+;;                      :last s
+;;                      :values []}
+;;                     coll)]
+;;         (f1 (:init result) (:values result))))))
+
+
+;; (defn pair-up [coll]
+;;   (r/reducer coll (fn [f1]
+;;                     (let [sentinel (Object.)
+;;                           state (atom sentinel)]
+;;                       (fn
+;;                         ([] [])
+;;                         ([accum arg]
+;;                            (if (not= @state sentinel)
+;;                              (let [result (f1 accum [@state arg])]
+;;                                (reset! state arg)
+;;                                result)
+;;                              (do
+;;                                (reset! state arg)
+;;                                accum))))))))
+
+
+;; (defn rmapcat
+;;   [fun coll]
+;;   (reify
+;;     clojure.core.protocols/CollReduce
+;;     (coll-reduce [_ f1 init]
+;;       (clojure.core.protocols/coll-reduce
+;;        coll
+;;        (fn [accum coll]
+;;          (clojure.core.protocols/coll-reduce (fun coll) f1 accum))
+;;        init))))
+
+
+;; (defn line-reducer [file]
+;;   (reify
+;;     clojure.core.protocols/CollReduce
+;;     (coll-reduce [_ f1]
+;;       (with-open [rdr (io/reader file)]
+;;         (loop [result (.readLine rdr)]
+;;           (let [l (.readLine rdr)]
+;;             (if l
+;;               (recur (f1 result l))
+;;               result)))))
+;;     (coll-reduce [_ f1 init]
+;;       (with-open [rdr (io/reader file)]
+;;         (loop [result init]
+;;           (let [l (.readLine rdr)]
+;;             (if l
+;;               (recur (f1 result l))
+;;               result)))))))
+
+;; (defn form-sink [coll]
+;;   (reify
+;;     clojure.core.protocols/CollReduce
+;;     (coll-reduce [_ f1 init]
+;;       (with-open [out (io/writer init)]
+;;         (binding [*out* out]
+;;           (clojure.core.protocols/coll-reduce
+;;            coll
+;;            (fn [_ arg] (prn (f1 arg)) nil)
+;;            nil))))))
+
+
+;; (defn f []
+;;   (with-open [out (io/writer "/tmp/db.txt")]
+;;     (binding [*out* out]
+;;       (doseq [[g1 g2] (->> ["/Users/hiredman/Downloads/actors.txt"
+;;                             "/Users/hiredman/Downloads/shakespeare.txt"
+;;                             "/Users/hiredman/Downloads/famous.txt"
+;;                             "/Users/hiredman/Downloads/characters_1.txt"
+;;                             "/Users/hiredman/Downloads/characters_2.txt"]
+;;                            (map io/file)
+;;                            (mapcat (fn [the-file]
+;;                                      (with-open [r (io/reader the-file)]
+;;                                        (doall (line-seq r)))))
+;;                            vec
+;;                            shuffle
+;;                            (partition-all 100)
+;;                            (partition-all 2 1))
+;;               ancestor g1
+;;               :let [child-count (rand-int (count g2))
+;;                     children (take child-count (shuffle (vec g2)))]
+;;               child children]
+;;         (prn [child :parent ancestor])))))
+
+
+;; (defn f []
+;;   (with-open [out (io/writer "/tmp/db.txt")]
+;;     (->> ["/Users/hiredman/Downloads/actors.txt"
+;;           "/Users/hiredman/Downloads/shakespeare.txt"
+;;           "/Users/hiredman/Downloads/famous.txt"
+;;           "/Users/hiredman/Downloads/characters_1.txt"
+;;           "/Users/hiredman/Downloads/characters_2.txt"]
+;;          (r/map io/file)
+;;          (rmapcat line-reducer)
+;;          (into [])
+;;          shuffle
+;;          (rpartition-by
+;;           (let [a (atom -1)]
+;;             (fn [_]
+;;               (swap! a inc)
+;;               (quot @a 100))))
+;;          (pair-up)
+;;          (rmapcat (fn [names]
+;;                     (vec (for [[g1 g2] [names]
+;;                                ancestor g1
+;;                                :let [child-count (rand-int (count g2))
+;;                                      children (take child-count (shuffle (vec g2)))]
+;;                                child children]
+;;                            [child :parent ancestor]))))
+;;          (form-sink)
+;;          (reduce identity (io/file "/tmp/db.txt")))))

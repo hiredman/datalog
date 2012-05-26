@@ -1,0 +1,11 @@
+#+TITLE: datalog
+* Description
+
+this project is a bit of exploratory coding in datalog, forkjoin, and
+ lord help me, SQL generation
+
+* License
+
+Copyright (C) 2012 Kevin Downey
+
+Distributed under the Eclipse Public License, the same as Clojure.

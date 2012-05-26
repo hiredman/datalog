@@ -60,7 +60,7 @@
     (filter #(= attribute (second %)) db)
     db))
 
-(declare search)
+(declare search psearch)
 
 (defn free-vars [[rule-head & rule-body]]
   (let [bound-vars (set (rest rule-head))]
@@ -165,7 +165,7 @@
            (search-rest-of-facts db rules vars facts clauses environment)))))))
 
 (defn psearch [db rules vars facts clauses environment]
-  (let [n 4]
+  (let [n 3]
     (if (> (count facts) 1000)
       (->> facts
            (partition-all (long (/ (count facts) n)))
